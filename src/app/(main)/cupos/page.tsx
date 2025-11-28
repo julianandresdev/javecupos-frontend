@@ -1,9 +1,10 @@
-// src/app/(main)/cupos/page.tsx
+// src/app/(main)/cupos/page.tsx (actualizado)
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CupoCard } from '../../../components/cupos/CupoCard';
 import { CupoDetailsModal } from '../../../components/cupos/CupoDetailsModal';
+import { CupoFiltersComponent, CupoFilters } from '../../../components/cupos/CupoFilters';
 import { cuposAPI, bookingsAPI } from '../../../lib/api/endpoints';
 import { Cupo } from '../../../types/cupo.types';
 
@@ -13,8 +14,8 @@ export default function CuposPage() {
   const [error, setError] = useState('');
   const [selectedCupo, setSelectedCupo] = useState<Cupo | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [filters, setFilters] = useState<CupoFilters>({});
 
-  // Cargar cupos al montar el componente
   useEffect(() => {
     loadCupos();
   }, []);
@@ -25,7 +26,6 @@ export default function CuposPage() {
       setError('');
       const data = await cuposAPI.getAll();
       
-      // Filtrar solo cupos disponibles y activos
       const cuposDisponibles = data.filter(
         (cupo) => cupo.activo && cupo.estado === 'Disponible'
       );
@@ -39,6 +39,94 @@ export default function CuposPage() {
     }
   };
 
+  // Aplicar filtros y ordenamiento
+  const cuposFiltrados = useMemo(() => {
+    let resultado = [...cupos];
+
+    // Filtrar por destino
+    if (filters.destino) {
+      resultado = resultado.filter((cupo) =>
+        cupo.destino.toLowerCase().includes(filters.destino!.toLowerCase())
+      );
+    }
+
+    // Filtrar por fecha
+    if (filters.fecha) {
+      const fechaFiltro = new Date(filters.fecha);
+      fechaFiltro.setHours(0, 0, 0, 0);
+      
+      resultado = resultado.filter((cupo) => {
+        const fechaCupo = new Date(cupo.horaSalida);
+        fechaCupo.setHours(0, 0, 0, 0);
+        return fechaCupo.getTime() === fechaFiltro.getTime();
+      });
+    }
+
+    // Filtrar por precio mínimo
+    if (filters.precioMin !== undefined) {
+      resultado = resultado.filter((cupo) => cupo.precio >= filters.precioMin!);
+    }
+
+    // Filtrar por precio máximo
+    if (filters.precioMax !== undefined) {
+      resultado = resultado.filter((cupo) => cupo.precio <= filters.precioMax!);
+    }
+
+    // Filtrar por asientos mínimos
+    if (filters.asientosMin !== undefined) {
+      resultado = resultado.filter(
+        (cupo) => cupo.asientosDisponibles >= filters.asientosMin!
+      );
+    }
+
+    // Ordenar
+    if (filters.ordenarPor) {
+      resultado.sort((a, b) => {
+        let valorA: any;
+        let valorB: any;
+
+        switch (filters.ordenarPor) {
+          case 'fecha':
+            valorA = new Date(a.horaSalida).getTime();
+            valorB = new Date(b.horaSalida).getTime();
+            break;
+          case 'precio':
+            valorA = a.precio;
+            valorB = b.precio;
+            break;
+          case 'asientos':
+            valorA = a.asientosDisponibles;
+            valorB = b.asientosDisponibles;
+            break;
+          default:
+            return 0;
+        }
+
+        if (filters.direccion === 'asc') {
+          return valorA - valorB;
+        } else {
+          return valorB - valorA;
+        }
+      });
+    }
+
+    return resultado;
+  }, [cupos, filters]);
+
+  // Agrupar por día
+  const cuposPorDia = useMemo(() => {
+    return cuposFiltrados.reduce((grupos, cupo) => {
+      const fecha = new Date(cupo.horaSalida);
+      const dia = fecha.toLocaleDateString('es-CO', { weekday: 'long' });
+      
+      if (!grupos[dia]) {
+        grupos[dia] = [];
+      }
+      grupos[dia].push(cupo);
+      return grupos;
+    }, {} as Record<string, Cupo[]>);
+  }, [cuposFiltrados]);
+
   const handleCupoClick = (cupo: Cupo) => {
     setSelectedCupo(cupo);
     setIsModalOpen(true);
@@ -46,7 +134,10 @@ export default function CuposPage() {
 
   const handleReservar = async (cupoId: number, asientos: number) => {
     try {
-      const montoTotal = selectedCupo!.precio * asientos;
+      const cupo = cupos.find((c) => c.id === cupoId);
+      if (!cupo) return;
+
+      const montoTotal = cupo.precio * asientos;
       
       await bookingsAPI.create({
         cupoId,
@@ -54,7 +145,6 @@ export default function CuposPage() {
         montoTotal,
       });
 
-      // Recargar cupos para actualizar asientos disponibles
       await loadCupos();
     } catch (error: any) {
       console.error('Error al crear reserva:', error);
@@ -62,7 +152,6 @@ export default function CuposPage() {
     }
   };
 
-  // Estado de carga
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -74,7 +163,6 @@ export default function CuposPage() {
     );
   }
 
-  // Estado de error
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -93,49 +181,16 @@ export default function CuposPage() {
     );
   }
 
-  // Estado vacío
-  if (cupos.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="text-6xl mb-4">🚗</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            No hay cupos disponibles
-          </h2>
-          <p className="text-gray-600 mb-4">
-            Por el momento no hay viajes programados.
-            ¡Vuelve pronto!
-          </p>
-          <button
-            onClick={loadCupos}
-            className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-          >
-            Actualizar
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Agrupar cupos por día
-  const cuposPorDia = cupos.reduce((grupos, cupo) => {
-    const fecha = new Date(cupo.horaSalida);
-    const dia = fecha.toLocaleDateString('es-CO', { weekday: 'long' });
-    
-    if (!grupos[dia]) {
-      grupos[dia] = [];
-    }
-    grupos[dia].push(cupo);
-    return grupos;
-  }, {} as Record<string, Cupo[]>);
-
   return (
     <div>
-      {/* Header con botón de actualizar */}
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Cupos Disponibles</h2>
-          <p className="text-gray-600 text-sm">Encuentra tu viaje ideal</p>
+          <p className="text-gray-600 text-sm">
+            {cuposFiltrados.length} {cuposFiltrados.length === 1 ? 'cupo' : 'cupos'} 
+            {cupos.length !== cuposFiltrados.length && ` de ${cupos.length} totales`}
+          </p>
         </div>
         <button
           onClick={loadCupos}
@@ -148,27 +203,42 @@ export default function CuposPage() {
         </button>
       </div>
 
-      {/* Lista de cupos agrupados por día */}
-      <div className="space-y-8">
-        {Object.entries(cuposPorDia).map(([dia, cuposDia]) => (
-          <div key={dia}>
-            <h3 className="text-xl font-semibold capitalize mb-4 text-primary">
-              {dia}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {cuposDia.map((cupo) => (
-                <CupoCard
-                  key={cupo.id}
-                  cupo={cupo}
-                  onClick={() => handleCupoClick(cupo)}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Filtros */}
+      <CupoFiltersComponent onFiltersChange={setFilters} isLoading={isLoading} />
 
-      {/* Modal de detalles */}
+      {/* Resultados */}
+      {cuposFiltrados.length === 0 ? (
+        <div className="text-center py-12 card">
+          <div className="text-6xl mb-4">🔍</div>
+          <h3 className="text-xl font-bold text-gray-800 mb-2">
+            No se encontraron cupos
+          </h3>
+          <p className="text-gray-600 mb-4">
+            Intenta ajustar los filtros de búsqueda
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {Object.entries(cuposPorDia).map(([dia, cuposDia]) => (
+            <div key={dia}>
+              <h3 className="text-xl font-semibold capitalize mb-4 text-primary">
+                {dia} ({cuposDia.length})
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {cuposDia.map((cupo) => (
+                  <CupoCard
+                    key={cupo.id}
+                    cupo={cupo}
+                    onClick={() => handleCupoClick(cupo)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal */}
       <CupoDetailsModal
         cupo={selectedCupo}
         isOpen={isModalOpen}

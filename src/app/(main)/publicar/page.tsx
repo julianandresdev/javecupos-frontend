@@ -1,4 +1,4 @@
-// src/app/(main)/publicar/page.tsx
+// src/app/(main)/publicar/page.tsx (ARCHIVO COMPLETO)
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -6,9 +6,10 @@ import { useAuthStore } from '../../../lib/stores/authStore';
 import { UserRole } from '../../../types/user.types';
 import { CreateCupoForm } from '../../../components/cupos/CreateCupoForm';
 import { MyCupoCard } from '../../../components/cupos/MyCupoCard';
+import { EditCupoModal } from '../../../components/cupos/EditCupoModal';
 import { cuposAPI } from '../../../lib/api/endpoints';
 import { Cupo } from '../../../types/cupo.types';
-import { CreateCupoFormData } from '../../../lib/validations/cupo.validations';
+import { CreateCupoFormData, UpdateCupoFormData } from '../../../lib/validations/cupo.validations';
 import { useRouter } from 'next/navigation';
 
 export default function PublicarPage() {
@@ -19,6 +20,10 @@ export default function PublicarPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCupos, setIsLoadingCupos] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  
+  // Estados para edición
+  const [cupoToEdit, setCupoToEdit] = useState<Cupo | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Verificar que el usuario sea conductor
   useEffect(() => {
@@ -41,6 +46,7 @@ export default function PublicarPage() {
       setMisCupos(data);
     } catch (error) {
       console.error('Error cargando cupos:', error);
+      alert('Error al cargar tus cupos');
     } finally {
       setIsLoadingCupos(false);
     }
@@ -67,28 +73,98 @@ export default function PublicarPage() {
       }, 2000);
     } catch (error: any) {
       console.error('Error creando cupo:', error);
-      alert('Error al crear el cupo. Intenta nuevamente.');
+      
+      // Mostrar mensaje de error más específico
+      if (error.response?.data?.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert('Error al crear el cupo. Intenta nuevamente.');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleEditCupo = (cupo: Cupo) => {
+    console.log('Editando cupo:', cupo);
+    setCupoToEdit(cupo);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateCupo = async (cupoId: number, data: UpdateCupoFormData) => {
+    try {
+      console.log('Actualizando cupo:', cupoId, data);
+      
+      // Preparar datos para actualización
+      const updateData: any = {};
+      
+      // Solo enviar campos que realmente cambiaron
+      if (data.destino !== undefined) updateData.destino = data.destino;
+      if (data.descripcion !== undefined) updateData.descripcion = data.descripcion;
+      if (data.asientosTotales !== undefined) updateData.asientosTotales = data.asientosTotales;
+      if (data.horaSalida !== undefined) updateData.horaSalida = data.horaSalida;
+      if (data.horaLlegadaEstimada !== undefined) updateData.horaLlegadaEstimada = data.horaLlegadaEstimada;
+      if (data.precio !== undefined) updateData.precio = data.precio;
+      if (data.puntoEncuentro !== undefined) updateData.puntoEncuentro = data.puntoEncuentro;
+      if (data.telefonoContacto !== undefined) updateData.telefonoContacto = data.telefonoContacto;
+
+      await cuposAPI.update(cupoId, updateData);
+      
+      // Cerrar modal
+      setIsEditModalOpen(false);
+      setCupoToEdit(null);
+      
+      // Mostrar mensaje de éxito
+      alert('✅ Cupo actualizado exitosamente');
+      
+      // Recargar lista de cupos
+      await loadMisCupos();
+    } catch (error: any) {
+      console.error('Error actualizando cupo:', error);
+      
+      // Mostrar mensaje de error específico
+      if (error.response?.data?.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert('Error al actualizar el cupo. Intenta nuevamente.');
+      }
+      
+      // Lanzar error para que el modal sepa que falló
+      throw error;
+    }
+  };
+
   const handleCancelCupo = async (cupoId: number) => {
-    if (!confirm('¿Estás seguro de cancelar este cupo? Esta acción no se puede deshacer.')) {
+    const cupo = misCupos.find((c) => c.id === cupoId);
+    
+    // Verificar si tiene reservas
+    const asientosReservados = cupo ? cupo.asientosTotales - cupo.asientosDisponibles : 0;
+    
+    let confirmMessage = '¿Estás seguro de cancelar este cupo?';
+    if (asientosReservados > 0) {
+      confirmMessage = `Este cupo tiene ${asientosReservados} reserva(s). ¿Estás seguro de cancelarlo? Los usuarios serán notificados.`;
+    }
+    
+    if (!confirm(confirmMessage)) {
       return;
     }
 
     try {
       await cuposAPI.cancel(cupoId);
-      alert('Cupo cancelado exitosamente');
-      loadMisCupos();
-    } catch (error) {
+      alert('✅ Cupo cancelado exitosamente');
+      await loadMisCupos();
+    } catch (error: any) {
       console.error('Error cancelando cupo:', error);
-      alert('Error al cancelar el cupo');
+      
+      if (error.response?.data?.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert('Error al cancelar el cupo');
+      }
     }
   };
 
-  // Mensaje de éxito
+  // Mensaje de éxito al crear
   if (showSuccess) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -163,7 +239,8 @@ export default function PublicarPage() {
             </div>
             <button
               onClick={loadMisCupos}
-              className="px-4 py-2 bg-white border-2 border-primary text-primary rounded-lg hover:bg-primary-light transition-colors"
+              disabled={isLoadingCupos}
+              className="px-4 py-2 bg-white border-2 border-primary text-primary rounded-lg hover:bg-primary-light transition-colors disabled:opacity-50"
             >
               🔄 Actualizar
             </button>
@@ -171,10 +248,13 @@ export default function PublicarPage() {
 
           {isLoadingCupos ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-gray-600">Cargando cupos...</p>
+              </div>
             </div>
           ) : misCupos.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-12 card">
               <div className="text-6xl mb-4">🚗</div>
               <h3 className="text-xl font-bold text-gray-800 mb-2">
                 No has publicado cupos aún
@@ -195,13 +275,9 @@ export default function PublicarPage() {
                 <MyCupoCard
                   key={cupo.id}
                   cupo={cupo}
-                  onEdit={() => {
-                    // Por ahora solo mostrar alerta
-                    alert('Funcionalidad de editar próximamente');
-                  }}
+                  onEdit={() => handleEditCupo(cupo)}
                   onCancel={() => handleCancelCupo(cupo.id)}
                   onViewBookings={() => {
-                    // Redirigir a reservas (implementaremos después)
                     router.push(`/publicar/reservas/${cupo.id}`);
                   }}
                 />
@@ -210,6 +286,17 @@ export default function PublicarPage() {
           )}
         </div>
       )}
+
+      {/* Modal de edición */}
+      <EditCupoModal
+        cupo={cupoToEdit}
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setCupoToEdit(null);
+        }}
+        onUpdate={handleUpdateCupo}
+      />
     </div>
   );
 }

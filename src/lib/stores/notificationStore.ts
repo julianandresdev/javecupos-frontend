@@ -1,6 +1,5 @@
-// src/lib/stores/notificationStore.ts
 import { create } from 'zustand';
-import { Notification } from '../../types/notification.types';
+import { Notification, NotificationStatus } from '../../types/notification.types';
 
 interface NotificationState {
   notifications: Notification[];
@@ -26,33 +25,38 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   setNotifications: (notifications) =>
     set({
       notifications,
-      unreadCount: notifications.filter((n) => n.isRead === 'Pendiente').length,
+      unreadCount: notifications.filter((n) => n.isRead === NotificationStatus.PENDING).length,
     }),
 
   addNotification: (notification) =>
     set((state) => ({
       notifications: [notification, ...state.notifications],
-      unreadCount: notification.isRead === 'Pendiente' ? state.unreadCount + 1 : state.unreadCount,
+      unreadCount: notification.isRead === NotificationStatus.PENDING ? state.unreadCount + 1 : state.unreadCount,
     })),
 
   markAsRead: (notificationId) =>
     set((state) => ({
       notifications: state.notifications.map((n) =>
-        n.id === notificationId ? { ...n, isRead: 'Leida' } : n
+        n.id === notificationId 
+          ? { ...n, isRead: NotificationStatus.READ } // ✅ Cast explícito al enum
+          : n
       ),
       unreadCount: Math.max(0, state.unreadCount - 1),
     })),
 
   markAllAsRead: () =>
     set((state) => ({
-      notifications: state.notifications.map((n) => ({ ...n, isRead: 'Leida' })),
+      notifications: state.notifications.map((n) => ({ 
+        ...n, 
+        isRead: NotificationStatus.READ // ✅ Cast explícito al enum
+      })),
       unreadCount: 0,
     })),
 
   removeNotification: (notificationId) =>
     set((state) => {
       const notification = state.notifications.find((n) => n.id === notificationId);
-      const wasUnread = notification?.isRead === 'Pendiente';
+      const wasUnread = notification?.isRead === NotificationStatus.PENDING;
       
       return {
         notifications: state.notifications.filter((n) => n.id !== notificationId),
