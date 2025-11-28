@@ -1,6 +1,7 @@
+// src/app/(auth)/reset-password/page.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,7 +10,8 @@ import { Button } from '../../../components/ui/Button';
 import { resetPasswordSchema, ResetPasswordFormData } from '../../../lib/validations/auth.validations';
 import { authAPI } from '../../../lib/api/endpoints';
 
-export default function ResetPasswordPage() {
+// Componente interno con la lógica
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -39,7 +41,6 @@ export default function ResetPasswordPage() {
       await authAPI.resetPassword(token, data.password);
       setShowSuccess(true);
 
-      // Redirigir al login después de 3 segundos
       setTimeout(() => {
         router.push('/login');
       }, 3000);
@@ -158,5 +159,18 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Componente principal con Suspense
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-primary-dark">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white"></div>
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

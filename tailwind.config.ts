@@ -1,3 +1,4 @@
+// tailwind.config.ts
 import type { Config } from "tailwindcss";
 
 const config: Config = {
@@ -9,7 +10,6 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Colores basados en el diseño de la imagen
         primary: {
           DEFAULT: '#4AA4A4',
           dark: '#3A8989',

@@ -1,13 +1,14 @@
 // src/app/(auth)/verify-email/page.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { authAPI } from '../../../lib/api/endpoints';
 import { Button } from '../../../components/ui/Button';
 
-export default function VerifyEmailPage() {
+// Componente interno que usa useSearchParams
+function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -103,5 +104,18 @@ export default function VerifyEmailPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Componente principal con Suspense boundary
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-primary-dark">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white"></div>
+      </div>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }
