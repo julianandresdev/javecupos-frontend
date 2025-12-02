@@ -34,6 +34,12 @@ export default function LoginPage() {
       // Llamar al endpoint de login
       const response = await authAPI.login(data);
 
+      // Guardar el access token inmediatamente para que esté disponible
+      // en el interceptor de Axios antes de llamar a /auth/profile
+      if (response?.access_token) {
+        localStorage.setItem('access_token', response.access_token);
+      }
+
       // Obtener el perfil del usuario
       const user = await authAPI.getProfile();
 
