@@ -348,17 +348,21 @@ export interface Cupo {
     rate: number;
     phone: string;
   };
+  origen: CupoBarrios;
   destino: CupoBarrios;
   descripcion?: string;
   asientosTotales: number;
+  asientos?: number; // Alias for asientosTotales
   asientosDisponibles: number;
   horaSalida: Date;
   horaLlegadaEstimada?: Date;
+  horaLlegada?: Date; // Alias for horaLlegadaEstimada
   precio: number;
   estado: CupoStatus;
   activo: boolean;
   puntoEncuentro: string;
   telefonoContacto?: string;
+  telefono?: string; // Alias for telefonoContacto
   createdAt: Date;
   updatedAt: Date;
 }

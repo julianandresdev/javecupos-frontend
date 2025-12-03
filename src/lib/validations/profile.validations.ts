@@ -7,7 +7,14 @@ export const updateProfileSchema = z.object({
     .max(100, 'El nombre no puede superar 100 caracteres'),
   phone: z
     .string()
-    .regex(/^\d{10}$/, 'El teléfono debe tener 10 dígitos'),
+    .min(7, 'El teléfono debe tener al menos 7 dígitos')
+    .max(20, 'El teléfono es demasiado largo')
+    .regex(/^[\d\s+()-]+$/, 'El teléfono solo puede contener números, espacios y símbolos (+, -, ())')
+    .refine((val) => {
+      // Contar solo los dígitos (ignorar espacios y símbolos)
+      const digitsOnly = val.replace(/\D/g, '');
+      return digitsOnly.length >= 7 && digitsOnly.length <= 15;
+    }, { message: 'El teléfono debe tener entre 7 y 15 dígitos' }),
   age: z
     .number()
     .min(18, 'Debes ser mayor de 18 años')

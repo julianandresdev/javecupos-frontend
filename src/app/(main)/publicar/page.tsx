@@ -10,10 +10,11 @@ import { EditCupoModal } from '../../../components/cupos/EditCupoModal';
 import { cuposAPI } from '../../../lib/api/endpoints';
 import { Cupo } from '../../../types/cupo.types';
 import { CreateCupoFormData, UpdateCupoFormData } from '../../../lib/validations/cupo.validations';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function PublicarPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'crear' | 'mis-cupos'>('crear');
   const [misCupos, setMisCupos] = useState<Cupo[]>([]);
@@ -31,6 +32,14 @@ export default function PublicarPage() {
       router.push('/cupos');
     }
   }, [user, router]);
+
+  // Manejar tab desde query params
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'mis-cupos') {
+      setActiveTab('mis-cupos');
+    }
+  }, [searchParams]);
 
   // Cargar mis cupos
   useEffect(() => {

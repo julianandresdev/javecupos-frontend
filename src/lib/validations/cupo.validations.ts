@@ -19,15 +19,10 @@ export const createCupoSchema = z.object({
       const fecha = new Date(val);
       const ahora = new Date();
       return fecha > ahora;
-    }, 'La hora de salida debe ser en el futuro'),
+    }, { message: 'La hora de salida debe ser en el futuro' }),
   horaLlegadaEstimada: z
     .string()
-    .optional()
-    .refine((val) => {
-      if (!val) return true;
-      const fecha = new Date(val);
-      return !isNaN(fecha.getTime());
-    }, 'Formato de fecha inválido'),
+    .optional(),
   precio: z
     .number()
     .min(1000, 'El precio mínimo es $1,000')

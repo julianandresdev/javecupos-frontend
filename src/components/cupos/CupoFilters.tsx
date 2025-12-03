@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BARRIOS_CALI } from '../../constants/barrios';
+import { CupoBarrios } from '../../types/cupo.types';
 
 export interface CupoFilters {
   destino?: string;
@@ -65,7 +65,8 @@ export const CupoFiltersComponent: React.FC<CupoFiltersProps> = ({
     setSearchBarrio('');
   };
 
-  const barriosFiltrados = BARRIOS_CALI.filter((barrio) =>
+  const barriosList = Object.values(CupoBarrios);
+  const barriosFiltrados = barriosList.filter((barrio) =>
     barrio.toLowerCase().includes(searchBarrio.toLowerCase())
   ).slice(0, 10);
 

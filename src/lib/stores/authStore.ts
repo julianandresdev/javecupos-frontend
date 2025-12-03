@@ -1,7 +1,7 @@
 // src/lib/stores/authStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User } from '../../types/user.types';
+import { User, UserStatus } from '../../types/user.types';
 
 interface AuthState {
   // Estado
@@ -14,11 +14,16 @@ interface AuthState {
   logout: () => void;
   updateUser: (user: Partial<User>) => void;
   setAccessToken: (token: string) => void;
+  
+  // Helpers
+  canAccessRoute: () => boolean;
+  requiresVerification: () => boolean;
+  isActive: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Estado inicial
       user: null,
       accessToken: null,
@@ -55,6 +60,24 @@ export const useAuthStore = create<AuthState>()(
       setAccessToken: (token: string) => {
         localStorage.setItem('access_token', token);
         set({ accessToken: token });
+      },
+      
+      // Helper: Verificar si puede acceder a rutas protegidas
+      canAccessRoute: () => {
+        const { user, isAuthenticated } = get();
+        return isAuthenticated && user !== null && user.status === UserStatus.ACTIVE;
+      },
+      
+      // Helper: Verificar si necesita verificación de email
+      requiresVerification: () => {
+        const { user } = get();
+        return user !== null && user.status === UserStatus.PENDING;
+      },
+      
+      // Helper: Verificar si la cuenta está activa
+      isActive: () => {
+        const { user } = get();
+        return user !== null && user.status === UserStatus.ACTIVE;
       },
     }),
     {

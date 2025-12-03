@@ -6,6 +6,8 @@ import { es } from 'date-fns/locale';
 import { Cupo } from '../../types/cupo.types';
 import { Button } from '../../components/ui/Button';
 
+import { useAuthStore } from '../../lib/stores/authStore';
+
 interface CupoDetailsModalProps {
   cupo: Cupo | null;
   isOpen: boolean;
@@ -19,11 +21,14 @@ export const CupoDetailsModal: React.FC<CupoDetailsModalProps> = ({
   onClose,
   onReservar,
 }) => {
+  const { user } = useAuthStore();
   const [asientosSeleccionados, setAsientosSeleccionados] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   if (!isOpen || !cupo) return null;
+
+  const isOwner = user?.id === cupo.conductorId;
 
   const handleReservar = async () => {
     try {
@@ -88,8 +93,8 @@ export const CupoDetailsModal: React.FC<CupoDetailsModalProps> = ({
         <div className="p-6 space-y-6">
           {/* Información del conductor */}
           {cupo.conductor && (
-            <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-              <div className="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center text-2xl font-bold">
+            <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold border-2 border-white shadow-sm">
                 {cupo.conductor.avatar ? (
                   <img src={cupo.conductor.avatar} alt={cupo.conductor.name} className="w-full h-full rounded-full object-cover" />
                 ) : (
@@ -97,18 +102,29 @@ export const CupoDetailsModal: React.FC<CupoDetailsModalProps> = ({
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-lg">{cupo.conductor.name}</h3>
-                <div className="flex items-center gap-1 text-yellow-500">
-                  <span>⭐</span>
-                  <span className="text-gray-600">{cupo.conductor.rate}/5</span>
+                <h3 className="font-bold text-gray-900">{cupo.conductor.name}</h3>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <div className="flex text-yellow-400">
+                    {[...Array(5)].map((_, i) => (
+                      <svg key={i} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={`w-4 h-4 ${i < Math.round(cupo.conductor!.rate) ? 'text-yellow-400' : 'text-gray-300'}`}>
+                        <path fillRule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clipRule="evenodd" />
+                      </svg>
+                    ))}
+                  </div>
+                  <span className="text-sm text-gray-500 font-medium ml-1">
+                    ({cupo.conductor.rate}/5)
+                  </span>
                 </div>
               </div>
               {cupo.conductor.phone && (
                 <a
                   href={`tel:${cupo.conductor.phone}`}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                  className="p-2.5 bg-primary/10 text-primary rounded-full hover:bg-primary hover:text-white transition-all duration-200"
+                  title="Llamar conductor"
                 >
-                  📞 Llamar
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M1.5 4.5a3 3 0 013-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 01-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 006.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 011.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 01-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5z" clipRule="evenodd" />
+                  </svg>
                 </a>
               )}
             </div>
@@ -177,8 +193,8 @@ export const CupoDetailsModal: React.FC<CupoDetailsModalProps> = ({
             )}
           </div>
 
-          {/* Selección de asientos */}
-          {cupo.asientosDisponibles > 0 && (
+          {/* Selección de asientos - Solo si NO es el dueño */}
+          {!isOwner && cupo.asientosDisponibles > 0 && (
             <div className="border-t pt-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 ¿Cuántos asientos deseas reservar?
@@ -212,20 +228,32 @@ export const CupoDetailsModal: React.FC<CupoDetailsModalProps> = ({
               </div>
             </div>
           )}
+          
+          {/* Mensaje para el dueño */}
+          {isOwner && (
+            <div className="border-t pt-6 text-center">
+              <div className="p-4 bg-blue-50 text-blue-800 rounded-lg">
+                <p className="font-medium">Este es tu cupo publicado</p>
+                <p className="text-sm mt-1">Puedes gestionar tus reservas desde el panel de "Mis Cupos"</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer con botones */}
         <div className="p-6 bg-gray-50 rounded-b-2xl space-y-3">
-          {cupo.asientosDisponibles > 0 ? (
-            <Button onClick={handleReservar} isLoading={isLoading}>
-              Confirmar reserva
-            </Button>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-red-600 font-semibold">
-                No hay asientos disponibles
-              </p>
-            </div>
+          {!isOwner && (
+            cupo.asientosDisponibles > 0 ? (
+              <Button onClick={handleReservar} isLoading={isLoading}>
+                Confirmar reserva
+              </Button>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-red-600 font-semibold">
+                  No hay asientos disponibles
+                </p>
+              </div>
+            )
           )}
           <Button variant="secondary" onClick={onClose}>
             Cerrar
