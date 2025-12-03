@@ -11,7 +11,7 @@ export default function NotificationsPage() {
     notifications,
     isLoading,
     markAsRead,
-    markAllAsRead,
+    markAllAsRead,/** */
     deleteNotification,
   } = useNotifications();
 
@@ -21,10 +21,10 @@ export default function NotificationsPage() {
   // Filter notifications by tab
   const filteredByTab = notifications.filter((notif) => {
     if (activeTab === 'all') return true;
-    if (activeTab === 'unread') return !notif.leida;
-    if (activeTab === 'reservas') return notif.tipo.includes('RESERVA') || notif.tipo.includes('BOOKING');
-    if (activeTab === 'cupos') return notif.tipo.includes('CUPO');
-    if (activeTab === 'sistema') return notif.tipo.includes('SISTEMA') || notif.tipo.includes('ACCOUNT');
+    if (activeTab === 'unread') return !notif.isRead;
+    if (activeTab === 'reservas') return notif.type.includes('RESERVA') || notif.type.includes('BOOKING');
+    if (activeTab === 'cupos') return notif.type.includes('CUPO');
+    if (activeTab === 'sistema') return notif.type.includes('SISTEMA') || notif.type.includes('ACCOUNT');
     return true;
   });
 
@@ -47,7 +47,7 @@ export default function NotificationsPage() {
     return true;
   });
 
-  const unreadCount = notifications.filter((n) => !n.leida).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const handleMarkAsRead = async (id: number) => {
     await markAsRead(id);
@@ -161,21 +161,21 @@ export default function NotificationsPage() {
             <div
               key={notif.id}
               className={`card transition-all ${
-                !notif.leida ? 'bg-primary-light border-l-4 border-primary' : ''
+                !notif.isRead  ? 'bg-primary-light border-l-4 border-primary' : ''
               }`}
             >
               <div className="flex items-start gap-4">
                 {/* Icon */}
                 <div className="text-3xl flex-shrink-0">
-                  {getNotificationIcon(notif.tipo)}
+                  {getNotificationIcon(notif.type)}
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <h3 className={`font-semibold mb-1 ${!notif.leida ? 'text-gray-800' : 'text-gray-600'}`}>
-                    {notif.titulo}
+                  <h3 className={`font-semibold mb-1 ${!notif.isRead ? 'text-gray-800' : 'text-gray-600'}`}>
+                    {notif.message}
                   </h3>
-                  <p className="text-sm text-gray-600 mb-2">{notif.mensaje}</p>
+                  <p className="text-sm text-gray-600 mb-2">{notif.message}</p>
                   <p className="text-xs text-gray-500">
                     {new Date(notif.createdAt).toLocaleString('es-CO', {
                       year: 'numeric',
@@ -189,7 +189,7 @@ export default function NotificationsPage() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {!notif.leida && (
+                  {!notif.isRead && (
                     <button
                       onClick={() => handleMarkAsRead(notif.id)}
                       className="p-2 text-primary hover:bg-primary-light rounded-lg transition-colors"
