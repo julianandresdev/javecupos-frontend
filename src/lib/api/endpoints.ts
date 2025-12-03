@@ -53,6 +53,15 @@ export const authAPI = {
     return response.data;
   },
 
+  // Cambiar contraseña autenticado
+  changePassword: async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
+    const response = await apiClient.post('/auth/change-password', {
+      currentPassword,
+      newPassword,
+    });
+    return response.data;
+  },
+
   // Logout
   logout: async (): Promise<{ message: string }> => {
     const response = await apiClient.post('/auth/logout');
@@ -145,6 +154,11 @@ export const bookingsAPI = {
     return response.data;
   },
 
+  getById: async (id: number): Promise<Booking> => {
+    const response = await apiClient.get<Booking>(`/bookings/${id}`);
+    return response.data;
+  },
+
   create: async (data: any): Promise<Booking> => {
     const response = await apiClient.post<Booking>('/bookings', data);
     return response.data;
@@ -198,5 +212,59 @@ export const notificationsAPI = {
 
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/notifications/${id}`);
+  },
+};
+
+/**
+ * ========================================
+ * FAVORITOS
+ * ========================================
+ */
+export const favoritesAPI = {
+  getMyFavorites: async (): Promise<Cupo[]> => {
+    const response = await apiClient.get<Cupo[]>('/favorites');
+    return response.data;
+  },
+
+  add: async (cupoId: number): Promise<{ message: string }> => {
+    const response = await apiClient.post(`/favorites/${cupoId}`);
+    return response.data;
+  },
+
+  remove: async (cupoId: number): Promise<{ message: string }> => {
+    const response = await apiClient.delete(`/favorites/${cupoId}`);
+    return response.data;
+  },
+
+  isFavorite: async (cupoId: number): Promise<{ isFavorite: boolean }> => {
+    const response = await apiClient.get<{ isFavorite: boolean }>(`/favorites/check/${cupoId}`);
+    return response.data;
+  },
+};
+
+/**
+ * ========================================
+ * CALIFICACIONES
+ * ========================================
+ */
+export const ratingsAPI = {
+  create: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/ratings', data);
+    return response.data;
+  },
+
+  getByUserId: async (userId: number): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/ratings/user/${userId}`);
+    return response.data;
+  },
+
+  getMyReceivedRatings: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/ratings/received');
+    return response.data;
+  },
+
+  getByBookingId: async (bookingId: number): Promise<any> => {
+    const response = await apiClient.get(`/ratings/booking/${bookingId}`);
+    return response.data;
   },
 };

@@ -136,13 +136,10 @@ export default function CuposPage() {
     try {
       const cupo = cupos.find((c) => c.id === cupoId);
       if (!cupo) return;
-
-      const montoTotal = cupo.precio * asientos;
       
       await bookingsAPI.create({
         cupoId,
         asientosReservados: asientos,
-        montoTotal,
       });
 
       await loadCupos();

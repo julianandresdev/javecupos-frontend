@@ -53,7 +53,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
 
   return (
     <div
-      className={`fixed bottom-24 right-4 md:bottom-4 md:right-4 max-w-sm w-full bg-white rounded-lg shadow-2xl border-2 border-primary overflow-hidden transition-all duration-300 z-50 ${
+      className={`fixed top-24 right-4 max-w-sm w-full bg-white rounded-lg shadow-2xl border-2 border-primary overflow-hidden transition-all duration-300 z-50 ${
         isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
       }`}
     >

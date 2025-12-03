@@ -4,11 +4,10 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Cupo } from '../../types/cupo.types';
+import { Cupo, CupoBarrios } from '../../types/cupo.types';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { updateCupoSchema, UpdateCupoFormData } from '../../lib/validations/cupo.validations';
-import { BARRIOS_CALI } from '../../constants/barrios';
 import { format } from 'date-fns';
 
 interface EditCupoModalProps {
@@ -33,6 +32,7 @@ export const EditCupoModal: React.FC<EditCupoModalProps> = ({
     handleSubmit,
     setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm<UpdateCupoFormData>({
     resolver: zodResolver(updateCupoSchema),
@@ -44,9 +44,6 @@ export const EditCupoModal: React.FC<EditCupoModalProps> = ({
           horaSalida: cupo.horaSalida
             ? format(new Date(cupo.horaSalida), "yyyy-MM-dd'T'HH:mm")
             : '',
-          horaLlegadaEstimada: cupo.horaLlegadaEstimada
-            ? format(new Date(cupo.horaLlegadaEstimada), "yyyy-MM-dd'T'HH:mm")
-            : '',
           precio: cupo.precio,
           puntoEncuentro: cupo.puntoEncuentro,
           telefonoContacto: cupo.telefonoContacto || '',
@@ -54,12 +51,35 @@ export const EditCupoModal: React.FC<EditCupoModalProps> = ({
       : undefined,
   });
 
+  // Actualizar formulario cuando cambia el cupo
+  React.useEffect(() => {
+    if (cupo) {
+      // Asegurar que la fecha esté en formato correcto para el input (yyyy-MM-ddThh:mm)
+      // La fecha viene en UTC (ISO string), necesitamos convertirla a local para el input
+      const date = new Date(cupo.horaSalida);
+      // Ajustar a zona horaria local manualmente para el input datetime-local
+      const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+      const formattedDate = localDate.toISOString().slice(0, 16);
+
+      reset({
+        destino: cupo.destino,
+        descripcion: cupo.descripcion || '',
+        asientosTotales: cupo.asientosTotales,
+        horaSalida: formattedDate,
+        precio: cupo.precio,
+        puntoEncuentro: cupo.puntoEncuentro,
+        telefonoContacto: cupo.telefonoContacto || '',
+      });
+      setSearchBarrio(cupo.destino);
+    }
+  }, [cupo, reset]);
+
   if (!isOpen || !cupo) return null;
 
   const destinoSeleccionado = watch('destino');
   const asientosTotales = watch('asientosTotales');
 
-  const barriosFiltrados = BARRIOS_CALI.filter((barrio) =>
+  const barriosFiltrados = Object.values(CupoBarrios).filter((barrio) =>
     barrio.toLowerCase().includes(searchBarrio.toLowerCase())
   ).slice(0, 10);
 
@@ -72,7 +92,14 @@ export const EditCupoModal: React.FC<EditCupoModalProps> = ({
   const onSubmit = async (data: UpdateCupoFormData) => {
     try {
       setIsLoading(true);
-      await onUpdate(cupo.id, data);
+      
+      // Convertir fecha local a ISO string (UTC) antes de enviar
+      const submitData = { ...data };
+      if (data.horaSalida) {
+        submitData.horaSalida = new Date(data.horaSalida).toISOString();
+      }
+
+      await onUpdate(cupo.id, submitData);
       onClose();
     } catch (error) {
       console.error('Error actualizando cupo:', error);
@@ -90,7 +117,7 @@ export const EditCupoModal: React.FC<EditCupoModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-primary text-white p-6 rounded-t-2xl flex justify-between items-center">
+        <div className="sticky top-0 bg-primary text-white p-6 rounded-t-2xl flex justify-between items-center z-20">
           <h2 className="text-2xl font-bold">Editar cupo</h2>
           <button
             onClick={onClose}
@@ -122,7 +149,7 @@ export const EditCupoModal: React.FC<EditCupoModalProps> = ({
             <div className="relative">
               <input
                 type="text"
-                value={searchBarrio || destinoSeleccionado}
+                value={searchBarrio}
                 onChange={(e) => {
                   setSearchBarrio(e.target.value);
                   setShowBarrios(true);
@@ -196,35 +223,27 @@ export const EditCupoModal: React.FC<EditCupoModalProps> = ({
             )}
           </div>
 
-          {/* Fechas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hora de salida *
-              </label>
+          {/* Fecha de salida */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Hora de salida *
+            </label>
+            <div className="relative">
               <input
                 type="datetime-local"
                 {...register('horaSalida')}
-                className="input-primary"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all bg-white text-gray-700 font-medium shadow-sm appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                style={{ colorScheme: 'light' }}
               />
-              {errors.horaSalida && (
-                <p className="mt-1 text-sm text-red-500">{errors.horaSalida.message}</p>
-              )}
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                </svg>
+              </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Llegada estimada
-              </label>
-              <input
-                type="datetime-local"
-                {...register('horaLlegadaEstimada')}
-                className="input-primary"
-              />
-              {errors.horaLlegadaEstimada && (
-                <p className="mt-1 text-sm text-red-500">{errors.horaLlegadaEstimada.message}</p>
-              )}
-            </div>
+            {errors.horaSalida && (
+              <p className="mt-1 text-sm text-red-500">{errors.horaSalida.message}</p>
+            )}
           </div>
 
           {/* Precio */}

@@ -11,6 +11,7 @@ import { Button } from '../../../components/ui/Button';
 import { loginSchema, LoginFormData } from '../../../lib/validations/auth.validations';
 import { authAPI } from '../../../lib/api/endpoints';
 import { useAuthStore } from '../../../lib/stores/authStore';
+import { UserStatus } from '../../../types/user.types';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,8 +35,30 @@ export default function LoginPage() {
       // Llamar al endpoint de login
       const response = await authAPI.login(data);
 
+      // Guardar el access token inmediatamente para que esté disponible
+      // en el interceptor de Axios antes de llamar a /auth/profile
+      if (response?.access_token) {
+        localStorage.setItem('access_token', response.access_token);
+      }
+
       // Obtener el perfil del usuario
       const user = await authAPI.getProfile();
+
+      // Verificar estado de la cuenta antes de permitir acceso
+      if (user.status === UserStatus.PENDING) {
+        setError('Debes verificar tu email antes de iniciar sesión');
+        return;
+      }
+
+      if (user.status === UserStatus.INACTIVE || user.status === UserStatus.SUSPENDED) {
+        setError('Tu cuenta está inactiva. Contacta al administrador.');
+        return;
+      }
+
+      if (user.status === UserStatus.BANNED || user.status === UserStatus.DELETED) {
+        setError('Tu cuenta ha sido bloqueada.');
+        return;
+      }
 
       // Guardar en el store
       login(response.access_token, user);
@@ -45,11 +68,12 @@ export default function LoginPage() {
     } catch (err: any) {
       console.error('Error en login:', err);
       
-      // Manejar diferentes tipos de error
-      if (err.response?.status === 401) {
+      const status = err.response?.status;
+
+      if (status === 401) {
         setError('Credenciales incorrectas');
-      } else if (err.response?.status === 403) {
-        setError('Debes verificar tu email antes de iniciar sesión');
+      } else if (status === 403) {
+        setError('No tienes permisos para iniciar sesión en este momento');
       } else {
         setError('Error al iniciar sesión. Intenta nuevamente.');
       }

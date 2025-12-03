@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { createCupoSchema, CreateCupoFormData } from '../../lib/validations/cupo.validations';
-import { BARRIOS_CALI } from '../../constants/barrios';
+import { CupoBarrios } from '../../types/cupo.types';
 
 interface CreateCupoFormProps {
   onSubmit: (data: CreateCupoFormData) => Promise<void>;
@@ -37,7 +37,8 @@ export const CreateCupoForm: React.FC<CreateCupoFormProps> = ({
   const destinoSeleccionado = watch('destino');
 
   // Filtrar barrios según búsqueda
-  const barriosFiltrados = BARRIOS_CALI.filter((barrio) =>
+  const barriosList = Object.values(CupoBarrios);
+  const barriosFiltrados = barriosList.filter((barrio) =>
     barrio.toLowerCase().includes(searchBarrio.toLowerCase())
   ).slice(0, 10); // Mostrar máximo 10 resultados
 
@@ -47,8 +48,19 @@ export const CreateCupoForm: React.FC<CreateCupoFormProps> = ({
     setShowBarrios(false);
   };
 
+  const handleFormSubmit = async (data: CreateCupoFormData) => {
+    // Convertir la fecha local a ISO string para asegurar consistencia de zona horaria
+    const localDate = new Date(data.horaSalida);
+    const isoDate = localDate.toISOString();
+    
+    await onSubmit({
+      ...data,
+      horaSalida: isoDate,
+    });
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       {/* Destino con autocomplete */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -137,34 +149,29 @@ export const CreateCupoForm: React.FC<CreateCupoFormProps> = ({
       </div>
 
       {/* Fechas y horas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Hora de salida *
-          </label>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Hora de salida *
+        </label>
+        <div className="relative">
           <input
             type="datetime-local"
             {...register('horaSalida')}
-            className="input-primary"
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all bg-white text-gray-700 font-medium shadow-sm appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+            style={{ colorScheme: 'light' }}
           />
-          {errors.horaSalida && (
-            <p className="mt-1 text-sm text-red-500">{errors.horaSalida.message}</p>
-          )}
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+            </svg>
+          </div>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Llegada estimada (opcional)
-          </label>
-          <input
-            type="datetime-local"
-            {...register('horaLlegadaEstimada')}
-            className="input-primary"
-          />
-          {errors.horaLlegadaEstimada && (
-            <p className="mt-1 text-sm text-red-500">{errors.horaLlegadaEstimada.message}</p>
-          )}
-        </div>
+        {errors.horaSalida && (
+          <p className="mt-1 text-sm text-red-500">{errors.horaSalida.message}</p>
+        )}
+        <p className="mt-1 text-xs text-gray-500">
+          Selecciona la fecha y hora en que iniciarás el viaje
+        </p>
       </div>
 
       {/* Precio */}

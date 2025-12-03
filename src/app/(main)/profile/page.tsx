@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthStore } from '../../../lib/stores/authStore';
-import { usersAPI } from '../../../lib/api/endpoints';
+import { usersAPI, authAPI } from '../../../lib/api/endpoints';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import {
@@ -78,23 +78,24 @@ export default function ProfilePage() {
       setSuccessMessage('');
       setErrorMessage('');
 
-      // Aquí deberías tener un endpoint específico para cambiar contraseña
-      // Por ahora simulamos la llamada
-      // await authAPI.changePassword(data.currentPassword, data.newPassword);
-      
-      // NOTA: Necesitas implementar este endpoint en el backend
-      // POST /auth/change-password con { currentPassword, newPassword }
-      
+      // Llamar al endpoint real de cambio de contraseña
+      await authAPI.changePassword(data.currentPassword, data.newPassword);
+
       setSuccessMessage('Contraseña actualizada exitosamente');
       resetPassword();
       
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error: any) {
       console.error('Error cambiando contraseña:', error);
-      if (error.response?.status === 401) {
-        setErrorMessage('La contraseña actual es incorrecta');
+
+      const status = error.response?.status;
+      const message = error.response?.data?.message;
+
+      if (status === 400 || status === 401) {
+        // Errores típicos de validación o contraseña actual incorrecta
+        setErrorMessage(message || 'La contraseña actual es incorrecta');
       } else {
-        setErrorMessage('Error al cambiar la contraseña');
+        setErrorMessage('Error al cambiar la contraseña. Intenta nuevamente.');
       }
     } finally {
       setIsLoadingPassword(false);
